@@ -1,0 +1,203 @@
+% Relatório técnico — Trabalho Avaliativo Agentes Inteligentes
+% Formatação alinhada à ABNT NBR 14724: margens, fonte 12 pt, espaçamento 1,5, recuo 1,25 cm
+% Compilar: pdflatex trabalho_agentes.tex (duas vezes para sumário)
+\documentclass[12pt,a4paper,oneside]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{mathptmx}
+
+\usepackage[a4paper,left=3cm,right=2cm,top=3cm,bottom=2cm]{geometry}
+
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black}
+% Evita âncora duplicada "page.1" (capa + reinício da numeração)
+\AtBeginDocument{\hypersetup{pageanchor=false}}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=1.25cm}
+
+\usepackage{titlesec}
+\titleformat{\section}{\normalfont\bfseries\fontsize{12}{18}\selectfont}{\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{18pt}{12pt}
+\titleformat{\subsection}{\normalfont\bfseries\fontsize{12}{18}\selectfont}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+\renewcommand{\refname}{REFERÊNCIAS}
+
+\begin{document}
+
+% --- Capa (ABNT: dados da instituição, título, autor, local, ano) ---
+\begin{titlepage}
+\centering
+\onehalfspacing
+\vspace*{1.5cm}
+
+{\fontsize{14}{16}\selectfont\textbf{INSTITUTO DE ENSINO SUPERIOR}}\\[0.3cm]
+{\fontsize{12}{14}\selectfont Pós-Graduação em Inteligência Artificial}\\[0.5cm]
+{\fontsize{12}{14}\selectfont Disciplina: Agentes Inteligentes}\\[0.5cm]
+{\fontsize{12}{14}\selectfont Período letivo: 2026}
+
+\vfill
+
+{\fontsize{14}{18}\selectfont\textbf{SIMULAÇÃO DE ORQUESTRA DE DRONES EM GRADE:\\INTEGRAÇÃO DE GRANDES MODELOS DE LINGUAGEM\\E AGENTE BASEADO EM MODELO}}\\[0.8cm]
+{\fontsize{12}{14}\selectfont Trabalho prático --- Simulação e agência inteligente}
+
+\vfill
+
+\begin{flushleft}
+\fontsize{12}{14}\selectfont
+\textbf{Autor:}\\[0.4cm]
+Robson Medeiros Santos\\
+\textit{Contribuição:} concepção e implementação integral do projeto: modelagem do ambiente em grade (\texttt{environment.py}), agente coreógrafo com integração ao LLM via Groq (\texttt{llm\_client.py}, \texttt{agents/choreographer.py}), agente piloto baseado em modelo com BFS (\texttt{agents/pilot.py}), simulação e orquestração (\texttt{simulation.py}, \texttt{main.py}), interface gráfica opcional (\texttt{gui.py}), documentação no repositório e elaboração deste relatório.
+\end{flushleft}
+
+\vfill
+
+{\fontsize{12}{14}\selectfont Teresina -- PI}\\
+{\fontsize{12}{14}\selectfont 2026}
+
+\end{titlepage}
+\hypersetup{pageanchor=true}
+
+\newpage
+\setcounter{page}{1}
+
+% --- Resumo ---
+\section*{RESUMO}
+\addcontentsline{toc}{section}{RESUMO}
+
+Este trabalho apresenta uma simulação original de \textit{show} de drones em ambiente de grade discreta, desenvolvida em linguagem Python sem dependências externas obrigatórias (\textit{pip}). Dois agentes autônomos operam de forma coordenada: um \textbf{coreógrafo}, cuja decisão de alto nível é obtida por meio de um grande modelo de linguagem (LLM) via API Groq, com engenharia de \textit{prompt} e saída estruturada em JSON; e um \textbf{piloto}, implementado como agente \textbf{baseado em modelo}, que planeja deslocamentos com busca em largura (BFS), evitando obstáculos e colisões entre aeronaves. O ambiente inclui múltiplos obstáculos, resolução de alvos inviáveis e modo de demonstração quando a API não está disponível. O repositório público contém o código-fonte e instruções de execução. O documento formaliza a especificação PEAS e a caracterização do ambiente segundo as dimensões de Russell e Norvig.
+
+\vspace{0.5cm}
+\noindent\textbf{Palavras-chave:} agentes inteligentes; grandes modelos de linguagem; simulação multiagente; planejamento baseado em modelo; Python.
+
+\newpage
+\tableofcontents
+\newpage
+
+% --- Corpo textual ---
+\section{INTRODUÇÃO}
+
+A disciplina de Agentes Inteligentes exige a construção de uma simulação em que pelo menos dois agentes autônomos interajam com o meio ou entre si, sendo obrigatório que ao menos um deles utilize raciocínio baseado em LLM e outro siga uma das arquiteturas clássicas apresentadas por Russell e Norvig \cite{russell2021}.
+
+O tema escolhido --- orquestração de drones em grade, inspirada em formações de \textit{drone show} --- oferece um contexto visual e conceitualmente rico: o \textbf{coreógrafo} interpreta o estado do espetáculo e define formações; o \textbf{piloto} executa trajetórias seguras. A escolha reduz a repetição de temas frequentes (armazém, predador-presa genérico) e mantém clara a separação entre deliberação simbólica (LLM) e planejamento geométrico (modelo interno + BFS).
+
+\section{IDENTIFICAÇÃO DO AUTOR E CONTRIBUIÇÃO}
+
+Conforme solicitado no enunciado, segue a identificação do autor e a descrição objetiva da contribuição no projeto.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{4.2cm}p{9.5cm}}
+\toprule
+\textbf{Autor} & \textbf{Contribuição no projeto} \\
+\midrule
+Robson Medeiros Santos & Modelagem do ambiente em grade com obstáculos e formações (\texttt{environment.py}); coreógrafo com LLM via API Groq e saída estruturada (\texttt{llm\_client.py}, \texttt{agents/choreographer.py}); piloto baseado em modelo com BFS e anti-colisão (\texttt{agents/pilot.py}); laço de simulação e CLI (\texttt{simulation.py}, \texttt{main.py}); interface gráfica Tkinter (\texttt{gui.py}); repositório público, testes de execução e relatório em conformidade com a NBR 14724. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{ESPECIFICAÇÃO DA TAREFA (PEAS)}
+
+A análise PEAS (\textit{Performance measure}, \textit{Environment}, \textit{Actuators}, \textit{Sensors}) descreve formalmente a tarefa de cada agente em relação ao ambiente simulado \cite{russell2021}.
+
+\subsection{Medida de desempenho (\textit{Performance})}
+
+Para o sistema como um todo, considera-se desempenho satisfatório quando: (i) os quatro drones ocupam, em conjunto, o conjunto de células-alvo definido pela formação vigente, sem colisões entre si e sem violação dos limites da grade; (ii) obstáculos não são atravessados; (iii) o coreógrafo só redefine a formação após a \textbf{conclusão} da anterior (transição detectada quando o multiconjunto de posições coincide com o multiconjunto de alvos), preservando coerência narrativa do ``espetáculo''; (iv) opcionalmente, minimiza-se o número de passos até a convergência, sem ser critério único.
+
+\subsection{Ambiente (\textit{Environment})}
+
+O ambiente é uma grade retangular discreta de dimensões $10 \times 14$ células, com conjunto fixo de obstáculos (paredes e blocos) e quatro drones identificados. O tempo é discretizado em \textit{beats}: a cada passo, todos os drones aplicam simultaneamente um movimento escolhido. O estado inclui posições dos drones, parâmetros da formação atual (nome, centro, escala), obstáculos e contador de tempo. Não há fenômenos físicos contínuos: posições são inteiras.
+
+\subsection{Atuadores (\textit{Actuators})}
+
+Cada drone pode executar, por turno, um entre os comandos: deslocamento para norte, sul, leste ou oeste, ou permanência (\textsc{hold}). O coreógrafo não move drones diretamente: altera parâmetros globais da formação (tipo geométrico, centro aproximado, escala), que o ambiente traduz em células-alvo (com correção para obstáculos e unicidade de alvo).
+
+\subsection{Sensores (\textit{Sensors})}
+
+Na implementação, o coreógrafo recebe um resumo textual do estado (posições, obstáculos, \textit{beat}, formação corrente), correspondendo a observabilidade total do simulador para esse agente. O piloto utiliza o mesmo modelo de mundo disponível no código (posições, obstáculos, alvos alinhados por proximidade), compatível com a arquitetura baseada em modelo, em que o agente mantém representação explícita do espaço e atualiza planos conforme o estado.
+
+\section{ANÁLISE DO AMBIENTE SEGUNDO RUSSELL E NORVIG}
+
+Caracteriza-se o simulador segundo as seis dimensões usuais de análise de ambientes de tarefas \cite{russell2021}.
+
+\subsection{Totalmente observável versus parcialmente observável}
+
+O ambiente é \textbf{totalmente observável} para os agentes tal como implementados: todo o estado relevante (grade, obstáculos, drones, parâmetros de formação) está disponível à função de decisão, sem incerteza sensorial modelada.
+
+\subsection{Agente único versus multiagente}
+
+Trata-se de ambiente \textbf{multiagente}: quatro drones competem por espaço com regras de precedência no deslocamento; o coreógrafo e o piloto são dois processos decisórios distintos que influenciam o mesmo estado. A interação é cooperativa (objetivo comum de formação), com restrições de não colisão.
+
+\subsection{Determinístico versus estocástico}
+
+O motor de simulação e o piloto são \textbf{determinísticos} para um dado estado e decisão do coreógrafo. O núcleo do coreógrafo via LLM introduz \textbf{estocasticidade} nas escolhas de formação (temperatura e variabilidade do modelo). O modo demonstração (\textit{stub}) é determinístico condicionado ao \textit{beat}.
+
+\subsection{Episódico versus sequencial}
+
+O problema é \textbf{sequencial}: a decisão corrente afeta estados futuros (posições, viabilidade de caminhos, cumprimento da formação). Não há independência entre ``turnos'' no sentido episódico estrito.
+
+\subsection{Estático versus dinâmico}
+
+O ambiente é \textbf{dinâmico}: enquanto um drone delibera no modelo simplificado, outros movem-se no mesmo passo temporal global; a grade muda a cada \textit{beat}. Obstáculos são estáticos no tempo.
+
+\subsection{Discreto versus contínuo}
+
+O espaço de estados e o conjunto de ações são \textbf{discretos} (células e movimentos cardinais). Não há variáveis contínuas de controle.
+
+\section{IMPLEMENTAÇÃO}
+
+\subsection{Repositório e licença de uso}
+
+O código-fonte completo encontra-se em repositório público, com histórico de versões e instruções de execução:
+
+\begin{center}
+\url{https://github.com/robsonpaulista/posicevagentes}
+\end{center}
+
+O material destina-se ao uso acadêmico no âmbito da disciplina.
+
+\subsection{Requisitos e execução}
+
+Exige-se \textbf{Python 3.10 ou superior}. Não há instalação obrigatória de pacotes via \texttt{pip}; utiliza-se a biblioteca padrão, incluindo \texttt{urllib} para chamadas HTTPS à API Groq e, opcionalmente, \texttt{tkinter} para interface gráfica (em distribuições Linux, pode ser necessário o pacote \texttt{python3-tk} do sistema).
+
+Na raiz do repositório, recomenda-se:
+
+\begin{verbatim}
+python main.py
+python main.py --visual --steps 120
+\end{verbatim}
+
+Para uso do LLM, copia-se \texttt{.env.example} para \texttt{.env} e define-se \texttt{GROQ\_API\_KEY}. Na ausência de chave ou em falha de rede ou cota, o sistema ativa \textbf{modo demonstração}, preservando a estrutura de decisão e o formato JSON de formação.
+
+\subsection{Arquitetura dos agentes}
+
+O \textbf{agente coreógrafo} implementa deliberação de alto nível com LLM: \textit{prompt} de sistema fixo exige resposta em JSON (\texttt{formation}, \texttt{center\_row}, \texttt{center\_col}, \texttt{scale}, \texttt{note}). O \textbf{agente piloto} mantém modelo interno da grade; para cada drone, calcula passo com BFS em grade, considerando obstáculos, posições alheias e intenções já planejadas de drones com índice menor, alinhando alvos por proximidade para reduzir bloqueios por permutação.
+
+\section{CONCLUSÃO}
+
+A simulação cumpre os requisitos do trabalho avaliativo: ambiente original implementado em Python, dois agentes autônomos com papéis distintos, integração de LLM com engenharia de \textit{prompt} e agente clássico baseado em modelo. A documentação no repositório e o presente relatório atendem às exigências de especificação PEAS, classificação dimensional e instruções de reprodutibilidade. Como extensões futuras, caberia modelar incerteza parcial ou custos de bateria, e avaliar formalmente a otimalidade do emparelhamento drone--alvo.
+
+\newpage
+\begin{thebibliography}{99}
+
+\bibitem{russell2021}
+RUSSELL, S.; NORVIG, P. \textbf{Inteligência artificial: uma abordagem moderna}. 4. ed. São Paulo: Pearson, 2021.
+
+\bibitem{groq2024}
+GROQ. \textbf{GroqCloud API documentation}. Disponível em: \url{https://console.groq.com/docs}. Acesso em: 5 abr. 2026.
+
+\end{thebibliography}
+
+\end{document}
