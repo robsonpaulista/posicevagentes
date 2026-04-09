@@ -76,7 +76,7 @@ Robson Medeiros Santos\\
 \section*{RESUMO}
 \addcontentsline{toc}{section}{RESUMO}
 
-Este trabalho apresenta uma simulação original de \textit{show} de drones em ambiente de grade discreta, desenvolvida em linguagem Python sem dependências externas obrigatórias (\textit{pip}). Dois agentes autônomos operam de forma coordenada: um \textbf{coreógrafo}, cuja decisão de alto nível é obtida por meio de um grande modelo de linguagem (LLM) via API Groq, com engenharia de \textit{prompt} e saída estruturada em JSON; e um \textbf{piloto}, implementado como agente \textbf{baseado em modelo}, que planeja deslocamentos com busca em largura (BFS), evitando obstáculos e colisões entre aeronaves. O ambiente inclui múltiplos obstáculos, resolução de alvos inviáveis e modo de demonstração quando a API não está disponível. O repositório público contém o código-fonte e instruções de execução. O documento formaliza a especificação PEAS e a caracterização do ambiente segundo as dimensões de Russell e Norvig.
+Este trabalho apresenta uma simulação original de \textit{show} de drones em ambiente de grade discreta, desenvolvida em linguagem Python sem dependências externas obrigatórias (\textit{pip}). Os \textbf{dois agentes autônomos} exigidos pelo trabalho são o \textbf{coreógrafo} (deliberação de alto nível com LLM via API Groq, \textit{prompt} e saída JSON) e o \textbf{piloto} (agente \textbf{baseado em modelo}, com BFS e anti-colisão). Os quatro drones são \textbf{entidades executoras} no ambiente, não agentes autônomos adicionais. O ambiente inclui múltiplos obstáculos, resolução de alvos inviáveis e modo de demonstração quando a API não está disponível. O repositório público contém o código-fonte e instruções de execução. O documento formaliza a especificação PEAS e a caracterização do ambiente segundo as dimensões de Russell e Norvig.
 
 \vspace{0.5cm}
 \noindent\textbf{Palavras-chave:} agentes inteligentes; grandes modelos de linguagem; simulação multiagente; planejamento baseado em modelo; Python.
@@ -91,6 +91,8 @@ Este trabalho apresenta uma simulação original de \textit{show} de drones em a
 A disciplina de Agentes Inteligentes exige a construção de uma simulação em que pelo menos dois agentes autônomos interajam com o meio ou entre si, sendo obrigatório que ao menos um deles utilize raciocínio baseado em LLM e outro siga uma das arquiteturas clássicas apresentadas por Russell e Norvig \cite{russell2021}.
 
 O tema escolhido --- orquestração de drones em grade, inspirada em formações de \textit{drone show} --- oferece um contexto visual e conceitualmente rico: o \textbf{coreógrafo} interpreta o estado do espetáculo e define formações; o \textbf{piloto} executa trajetórias seguras. A escolha reduz a repetição de temas frequentes (armazém, predador-presa genérico) e mantém clara a separação entre deliberação simbólica (LLM) e planejamento geométrico (modelo interno + BFS).
+
+Para evitar ambiguidade em relação ao enunciado, explicita-se que \textbf{os dois agentes autônomos exigidos pelo trabalho são}: (i) o \textbf{agente coreógrafo}, responsável pela deliberação de alto nível com apoio de LLM (escolha e parâmetros da formação); e (ii) o \textbf{agente piloto}, responsável pelo planejamento e pela execução segura dos deslocamentos no ambiente (um passo por \textit{beat} por drone, com BFS e regras de anti-colisão). Os \textbf{quatro drones} não são contados como agentes autônomos adicionais: são \textbf{entidades executoras} no ambiente, cujos movimentos resultam do plano único do piloto e das restrições espaciais compartilhadas.
 
 \section{IDENTIFICAÇÃO DO AUTOR E CONTRIBUIÇÃO}
 
@@ -138,7 +140,7 @@ O ambiente é \textbf{totalmente observável} para os agentes tal como implement
 
 \subsection{Agente único versus multiagente}
 
-Trata-se de ambiente \textbf{multiagente}: quatro drones competem por espaço com regras de precedência no deslocamento; o coreógrafo e o piloto são dois processos decisórios distintos que influenciam o mesmo estado. A interação é cooperativa (objetivo comum de formação), com restrições de não colisão.
+O sistema é \textbf{multiagente} porque envolve \textbf{dois agentes autônomos} com funções complementares --- coreógrafo e piloto --- atuando sobre um \textbf{ambiente compartilhado}. Além disso, a execução envolve \textbf{múltiplos drones}, que introduzem restrições espaciais e necessidade de coordenação (precedência no deslocamento, não colisão). A interação é cooperativa no objetivo comum de formação, com competição apenas pelo uso seguro das células.
 
 \subsection{Determinístico versus estocástico}
 
@@ -150,13 +152,26 @@ O problema é \textbf{sequencial}: a decisão corrente afeta estados futuros (po
 
 \subsection{Estático versus dinâmico}
 
-O ambiente é \textbf{dinâmico}: enquanto um drone delibera no modelo simplificado, outros movem-se no mesmo passo temporal global; a grade muda a cada \textit{beat}. Obstáculos são estáticos no tempo.
+O ambiente é \textbf{dinâmico} porque o estado relevante \textbf{evolui ao longo dos \textit{beats}}, exigindo \textbf{replanejamento contínuo} dos agentes em função das novas posições dos drones (e das metas de formação quando o coreógrafo as atualiza).
 
 \subsection{Discreto versus contínuo}
 
 O espaço de estados e o conjunto de ações são \textbf{discretos} (células e movimentos cardinais). Não há variáveis contínuas de controle.
 
 \section{IMPLEMENTAÇÃO}
+
+\subsection{Fluxo da simulação}
+
+Resumo do ciclo por \textit{beat} (útil para visão global antes dos detalhes de implementação):
+
+\begin{itemize}[leftmargin=1.25cm]
+  \item O coreógrafo observa o estado atual do ambiente.
+  \item O LLM define a próxima formação em JSON.
+  \item O ambiente traduz a formação em células-alvo.
+  \item O piloto planeja os movimentos via BFS.
+  \item Os drones executam um passo.
+  \item O ciclo repete-se até convergência.
+\end{itemize}
 
 \subsection{Repositório e licença de uso}
 
@@ -183,11 +198,13 @@ Para uso do LLM, copia-se \texttt{.env.example} para \texttt{.env} e define-se \
 
 \subsection{Arquitetura dos agentes}
 
-O \textbf{agente coreógrafo} implementa deliberação de alto nível com LLM: \textit{prompt} de sistema fixo exige resposta em JSON (\texttt{formation}, \texttt{center\_row}, \texttt{center\_col}, \texttt{scale}, \texttt{note}). O \textbf{agente piloto} mantém modelo interno da grade; para cada drone, calcula passo com BFS em grade, considerando obstáculos, posições alheias e intenções já planejadas de drones com índice menor, alinhando alvos por proximidade para reduzir bloqueios por permutação.
+O \textbf{agente coreógrafo} implementa deliberação de alto nível com LLM: \textit{prompt} de sistema fixo exige resposta em JSON (\texttt{formation}, \texttt{center\_row}, \texttt{center\_col}, \texttt{scale}, \texttt{note}). O \textbf{agente piloto} mantém modelo interno da grade; para cada drone, calcula o passo com busca em largura (BFS) na grade, considerando obstáculos, posições alheias e intenções já planejadas de drones com índice menor, alinhando alvos por proximidade para reduzir bloqueios por permutação. A \textbf{busca em largura (BFS)} foi escolhida por sua adequação a \textbf{ambientes em grade discreta com custo uniforme por ação}, garantindo \textbf{caminhos mínimos em número de passos} até o alvo alcançável. Repete-se, no nível de implementação, que apenas esses dois módulos correspondem aos \textbf{dois agentes autônomos}; os drones materializam o efeito conjunto das ações escolhidas pelo piloto.
 
 \section{CONCLUSÃO}
 
-A simulação cumpre os requisitos do trabalho avaliativo: ambiente original implementado em Python, dois agentes autônomos com papéis distintos, integração de LLM com engenharia de \textit{prompt} e agente clássico baseado em modelo. A documentação no repositório e o presente relatório atendem às exigências de especificação PEAS, classificação dimensional e instruções de reprodutibilidade. Como extensões futuras, caberia modelar incerteza parcial ou custos de bateria, e avaliar formalmente a otimalidade do emparelhamento drone--alvo.
+A simulação cumpre os requisitos do trabalho avaliativo: ambiente original em Python, \textbf{dois agentes autônomos} (coreógrafo com LLM e piloto baseado em modelo), integração com engenharia de \textit{prompt} e planejamento geométrico com BFS. A documentação no repositório e o presente relatório atendem à especificação PEAS, à classificação dimensional e às instruções de reprodutibilidade.
+
+A \textbf{principal contribuição} do projeto está na \textbf{separação entre deliberação de alto nível baseada em LLM} e \textbf{execução segura via planejamento determinístico} (BFS e regras de precedência na grade), o que torna a arquitetura híbrida auditável e alinhada à literatura clássica. Como \textbf{limitação}, a escolha das formações depende da \textbf{variabilidade do modelo} (e, no modo demonstração, de regras fixas), e \textbf{não há avaliação quantitativa de eficiência global} do espetáculo; o emparelhamento drone--alvo por proximidade permanece heurístico. Como extensões futuras, caberia modelar incerteza parcial ou custos de bateria, e medir formalmente tempo até convergência ou otimalidade em cenários parametrizados.
 
 \newpage
 \begin{thebibliography}{99}
